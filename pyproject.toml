@@ -1,0 +1,12 @@
+[tool.poetry]
+name = "dezero"
+version = "0.1.0"
+description = ""
+license = "MIT"
+authors = [""]
+maintainers = [""]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.23.3"
