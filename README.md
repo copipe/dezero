@@ -7,19 +7,19 @@ DeZero is a python package that provides a deep learing framework.
 This package has minimal code and features similar to modern frameworks like PyTorch and TensorFlow.  
 This code is based on ["Deep Learning 3 made from scratch"](https://www.oreilly.co.jp/books/9784873119069/), and you can refer to the original source code from [here](https://github.com/oreilly-japan/deep-learning-from-scratch-3).
 
-# Installation
+## Installation
 You will be able to install DeZero via pip. (not yet supported)
 ```
 $ pip install dezero
 ```
 
-# Examples
+## Examples
 comming soon
 
-# License
+## License
 DeZero is released under the MIT license.
 
-# References
+## References
 
 - [斎藤 康毅. ゼロから作るDeep Learning ❸. O'Reilly Japan. 2020.](https://www.oreilly.co.jp/books/9784873119069/)
 
