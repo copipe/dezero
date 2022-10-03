@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "dezero"
 version = "0.1.0"
-description = ""
+description = "DeZero is a python package that provides a deep learing framework."
 license = "MIT"
 authors = [""]
 maintainers = [""]
