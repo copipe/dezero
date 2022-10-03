@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  dezero:
+    image: dezero_cpu
+    container_name: dezero_cpu
+    build:
+      args:
+        - PROJECT_NAME=dezero
+        - USER_NAME=developer
+        - GROUP_NAME=developer
+        - BASE_IMAGE=ubuntu:20.04
+        - PYTHON_VERSION=3.9
+        - UID=${HOST_UID-1000}
+        - GID=${HOST_GID-1000}
+      context: ../../
+      dockerfile: environments/Dockerfile
+    tty: true
+    volumes:
+      - ../../:/home/developer/dezero
+    ports:
+      - 8000:8000
