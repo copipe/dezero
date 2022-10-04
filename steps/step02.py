@@ -1,16 +1,23 @@
 from abc import ABCMeta, abstractmethod
-from re import S
 
 import numpy as np
 
 
 class Variable:
+    """A kind of Tensor that is to be considered a module parameter.
+
+    Args:
+        data (Tensor): parameter tensor.
+    """
+
     def __init__(self, data: np.ndarray):
         self.data = data
 
 
 class Function(metaclass=ABCMeta):
-    def __call__(self, input: Variable):
+    """Base class to create custom Function"""
+
+    def __call__(self, input: Variable) -> Variable:
         x = input.data
         y = self.forward(x)
         output = Variable(y)
@@ -22,6 +29,8 @@ class Function(metaclass=ABCMeta):
 
 
 class Square(Function):
+    """Perform a square operation."""
+
     def forward(self, x: np.ndarray) -> np.ndarray:
         return x**2
 
