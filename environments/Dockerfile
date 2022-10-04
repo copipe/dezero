@@ -19,7 +19,7 @@ RUN apt update && apt install --no-install-recommends -y software-properties-com
 RUN add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt update && apt install --no-install-recommends -y \
-    git curl make ssh openssh-client \
+    git curl make ssh openssh-client vim tmux\
     python${PYTHON_VERSION} python3-pip python-is-python3
 
 # Following is needed to swtich default python3 version
