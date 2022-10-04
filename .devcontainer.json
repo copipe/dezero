@@ -1,0 +1,39 @@
+{
+    "name": "dezero",
+    "service": "dezero",
+    "dockerComposeFile": "environments/cpu/docker-compose.yaml",
+    "workspaceFolder": "/home/developer/dezero",
+    "settings": {
+        "terminal.integrated.profiles.linux": {
+            "bash": {
+                "path": "/usr/bin/bash",
+                "args": [
+                    "-l"
+                ]
+            }
+        },
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "python.pythonPath": "/usr/bin/python",
+        "python.linting.flake8Enabled": true,
+        "python.formatting.provider": "black",
+        "python.linting.flake8Args": [
+            "--ignore=E203, E231, E501, E503"
+        ],
+        "python.formatting.blackArgs": [
+            "--line-length=88"
+        ],
+        "[python]": {
+            "editor.formatOnSave": true,
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": true
+            }
+        }
+    },
+    "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "njpwerner.autodocstring",
+        "shardulm94.trailing-spaces",
+        "vscodevim.vim",
+    ]
+}
