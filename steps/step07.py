@@ -23,6 +23,13 @@ class Variable:
     def set_creator(self, func: Function):
         self.creator = func
 
+    def backward(self):
+        f = self.creator
+        if f is not None:
+            x = f.input
+            x.grad = f.backward(self.grad)
+            x.backward()
+
 
 class Function(metaclass=ABCMeta):
     """Base class to create custom Function
@@ -122,4 +129,17 @@ A_ = a.creator
 assert A_ is not None
 x = A_.input
 x.grad = A_.backward(a.grad)
+print(x.grad)
+
+A = Square()
+B = Exp()
+C = Square()
+
+x = Variable(np.array(0.5))
+a = A(x)
+b = B(a)
+y = C(b)
+
+y.grad = np.array(1.0)
+y.backward()
 print(x.grad)
