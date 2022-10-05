@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
+from typing import Optional
 
 import numpy as np
 
@@ -14,10 +17,11 @@ class Variable:
 
     def __init__(self, data: np.ndarray):
         self.data = data
-        self.grad = None
-        self.creator = None
-    
-    def set_creator(self, func)
+        self.grad: Optional[np.ndarray] = None
+        self.creator: Optional[Function] = None
+
+    def set_creator(self, func: Function):
+        self.creator = func
 
 
 class Function(metaclass=ABCMeta):
@@ -32,15 +36,17 @@ class Function(metaclass=ABCMeta):
         x = input.data
         y = self.forward(x)
         output = Variable(y)
+        output.set_creator(self)
         self.input = input
+        self.output = output
         return output
 
     @abstractmethod
-    def forward(self, x: np.ndarray):
+    def forward(self, x: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
-    def backward(self, gy: Variable):
+    def backward(self, gy: np.ndarray) -> np.ndarray:
         pass
 
 
@@ -50,7 +56,7 @@ class Square(Function):
     def forward(self, x: np.ndarray) -> np.ndarray:
         return x**2
 
-    def backward(self, gy: Variable) -> np.ndarray:
+    def backward(self, gy: np.ndarray) -> np.ndarray:
         x = self.input.data
         gx = 2 * x * gy
         return gx
@@ -62,7 +68,7 @@ class Exp(Function):
     def forward(self, x: np.ndarray) -> np.ndarray:
         return np.exp(x)
 
-    def backward(self, gy: Variable) -> np.ndarray:
+    def backward(self, gy: np.ndarray) -> np.ndarray:
         x = self.input.data
         gx = np.exp(x) * gy
         return gx
@@ -95,8 +101,25 @@ a = A(x)
 b = B(a)
 y = C(b)
 
+assert y.creator == C
+assert y.creator.input == b
+assert y.creator.input.creator == B
+assert y.creator.input.creator.input == a
+assert y.creator.input.creator.input.creator == A
+assert y.creator.input.creator.input.creator.input == x
+
 y.grad = np.array(1.0)
-b.grad = C.backward(y.grad)
-a.grad = B.backward(b.grad)
-x.grad = A.backward(a.grad)
+C_ = y.creator
+b = C_.input
+b.grad = C_.backward(y.grad)
+
+B_ = b.creator
+assert B_ is not None
+a = B_.input
+a.grad = B_.backward(b.grad)
+
+A_ = a.creator
+assert A_ is not None
+x = A_.input
+x.grad = A_.backward(a.grad)
 print(x.grad)
