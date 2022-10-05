@@ -11,10 +11,19 @@ def as_array(x: Union[np.ndarray, numbers.Number]) -> np.ndarray:
     """Convert numbers.Number to np.ndarray.
 
     Args:
-        x (Union[np.ndarray, numbers.Number]): input tensor or number.
+        x (Union[np.ndarray, numbers.Number]): input tensor(np.ndarray) or number(np.float32, np.float64 etc...).
 
     Returns:
-        np.ndarray: Tensor
+        np.ndarray: ndarray Tensor
+
+    Notes:
+        Adding an operation to 0-dimensional np.ndarray may result in np.float64
+        ```
+        >>> x = np.array(1.0)
+        >>> y = x ** 2
+        >>> print(type(x), type(y))
+        <class 'numpy.ndarray'> <class 'numpy.float64'>
+        ```
     """
     if isinstance(x, numbers.Number):
         return np.array(x)
