@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from typing import Callable, Optional, Union
 
 import numpy as np
 
@@ -13,7 +14,7 @@ class Variable:
 
     def __init__(self, data: np.ndarray):
         self.data = data
-        self.grad = None
+        self.grad: Optional[np.ndarray] = None
 
 
 class Function(metaclass=ABCMeta):
@@ -32,11 +33,11 @@ class Function(metaclass=ABCMeta):
         return output
 
     @abstractmethod
-    def forward(self, x: np.ndarray):
+    def forward(self, x: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
-    def backward(self, gy: Variable):
+    def backward(self, gy: np.ndarray) -> np.ndarray:
         pass
 
 
@@ -46,7 +47,7 @@ class Square(Function):
     def forward(self, x: np.ndarray) -> np.ndarray:
         return x**2
 
-    def backward(self, gy: Variable) -> np.ndarray:
+    def backward(self, gy: np.ndarray) -> np.ndarray:
         x = self.input.data
         gx = 2 * x * gy
         return gx
@@ -58,13 +59,15 @@ class Exp(Function):
     def forward(self, x: np.ndarray) -> np.ndarray:
         return np.exp(x)
 
-    def backward(self, gy: Variable) -> np.ndarray:
+    def backward(self, gy: np.ndarray) -> np.ndarray:
         x = self.input.data
         gx = np.exp(x) * gy
         return gx
 
 
-def numerical_diff(f: Function, x: Variable, eps: float = 1e-4) -> float:
+def numerical_diff(
+    f: Union[Callable[[Variable], Variable], Function], x: Variable, eps: float = 1e-4
+) -> float:
     """Numerical differentiation by central difference approximation
 
     Args:
