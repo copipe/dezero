@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from typing import Callable, Union
 
 import numpy as np
 
@@ -44,7 +45,9 @@ class Exp(Function):
         return np.exp(x)
 
 
-def numerical_diff(f: Function, x: Variable, eps: float = 1e-4) -> float:
+def numerical_diff(
+    f: Union[Callable[[Variable], Variable], Function], x: Variable, eps: float = 1e-4
+) -> float:
     """Numerical differentiation by central difference approximation
 
     Args:
@@ -62,13 +65,13 @@ def numerical_diff(f: Function, x: Variable, eps: float = 1e-4) -> float:
     return (y1.data - y0.data) / (2 * eps)
 
 
-f = Square()
+f1 = Square()
 x = Variable(np.array(2.0))
-dy = numerical_diff(f, x)
+dy = numerical_diff(f1, x)
 print(dy)
 
 
-def f(x):
+def f2(x):
     A = Square()
     B = Exp()
     C = Square()
@@ -76,5 +79,5 @@ def f(x):
 
 
 x = Variable(np.array(0.5))
-dy = numerical_diff(f, x)
+dy = numerical_diff(f2, x)
 print(dy)
