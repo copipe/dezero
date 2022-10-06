@@ -40,9 +40,8 @@ class Variable:
     """
 
     def __init__(self, data: np.ndarray):
-        if data is not None:
-            if not isinstance(data, np.ndarray):
-                raise TypeError(f"{type(data)} is not supported.")
+        if not isinstance(data, np.ndarray):
+            raise TypeError(f"{type(data)} is not supported.")
 
         self.data = data
         self.grad: Optional[np.ndarray] = None
@@ -144,5 +143,5 @@ def exp(x: Variable) -> Variable:
 
 
 x = Variable(np.array(0.5))
-x = Variable(None)
+# x = Variable(None)
 # x = Variable(0.5)

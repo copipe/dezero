@@ -6,7 +6,8 @@ from steps.step09 import Variable
 
 @pytest.mark.parametrize(
     "data",
-    [np.array(0.5), None],
+    # [np.array(0.5), None],
+    [np.array(0.5)],
 )
 def test_valid_variable_type(data):
     x = Variable(data)
