@@ -69,7 +69,8 @@ class Function(metaclass=ABCMeta):
     `__call__` applies the operation defined by `forward` to input x (Variable)
 
     Attributes:
-        inputs (List[Variable]): input during forward propagation
+        inputs (Tuple[Variable]): input during forward propagation
+        outputs (List[Variable]): input during forward propagation
     """
 
     def __call__(self, *inputs: Variable) -> Union[Variable, List[Variable]]:
