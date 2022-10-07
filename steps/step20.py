@@ -146,6 +146,12 @@ class Variable:
     def dtype(self):
         return self.data.dtype
 
+    def __add__(self, other: Variable):
+        return add(self, other)
+
+    def __mul__(self, other: Variable):
+        return mul(self, other)
+
 
 class Function(metaclass=ABCMeta):
     """Base class to create custom Function
@@ -288,9 +294,6 @@ def mul(x1: Variable, x2: Variable) -> Variable:
     assert isinstance(y, Variable)
     return y
 
-
-Variable.__add__ = add
-Variable.__mul__ = mul
 
 with no_grad():
     x = Variable(np.array(1.0))
