@@ -8,6 +8,10 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 
 
+class Config:
+    enable_backprop = True
+
+
 def as_array(x: Union[np.ndarray, numbers.Number]) -> np.ndarray:
     """Convert numbers.Number to np.ndarray.
 
@@ -56,7 +60,7 @@ class Variable:
         self.creator = func
         self.generation = func.generation + 1
 
-    def backward(self):
+    def backward(self, retain_grad=False):
         if self.grad is None:
             self.grad = np.ones_like(self.data)
 
@@ -73,7 +77,7 @@ class Variable:
 
         while funcs:
             f = funcs.pop()
-            gys = [output().grad for output in f.outputs]  # weakref
+            gys = [output().grad for output in f.outputs]  # output is weakref
             gxs = f.backward(*gys)
             if not isinstance(gxs, tuple):
                 gxs = (gxs,)
@@ -86,6 +90,10 @@ class Variable:
 
                 if x.creator is not None:
                     add_func(x.creator)
+
+            if not retain_grad:
+                for y in f.outputs:
+                    y().grad = None  # y is weakref
 
     def cleargrad(self):
         self.grad = None
@@ -109,11 +117,12 @@ class Function(metaclass=ABCMeta):
             ys = (ys,)
         outputs = [Variable(as_array(y)) for y in ys]
 
-        self.generation = max([x.generation for x in inputs])
-        for output in outputs:
-            output.set_creator(self)
-        self.inputs = inputs
-        self.outputs = [weakref.ref(output) for output in outputs]
+        if Config.enable_backprop:
+            self.generation = max([x.generation for x in inputs])
+            for output in outputs:
+                output.set_creator(self)
+            self.inputs = inputs
+            self.outputs = [weakref.ref(output) for output in outputs]
         return outputs if len(outputs) > 1 else outputs[0]
 
     @abstractmethod
@@ -204,9 +213,10 @@ def add(x1: Variable, x2: Variable) -> Variable:
     return y
 
 
-x = Variable(np.array(2.0))
-a = square(x)
-y = add(square(a), square(a))
+x0 = Variable(np.array(1.0))
+x1 = Variable(np.array(1.0))
+t = add(x0, x1)
+y = add(x0, t)
 y.backward()
-print(y.data)
-print(x.grad)
+print(y.grad, t.grad)
+print(x0.grad, x1.grad)
