@@ -20,11 +20,11 @@ isort:
 
 .PHONY: mypy
 mypy:
-	poetry run mypy dezero
+	poetry run mypy steps
 
 .PHONY: test
 test:
-	poetry run pytest tests --cov=src --cov-report term-missing --durations 5
+	poetry run pytest tests
 
 .PHONY: format
 format:

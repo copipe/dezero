@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numbers
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -17,7 +17,8 @@ def as_array(x: Union[np.ndarray, numbers.Number]) -> np.ndarray:
         np.ndarray: ndarray Tensor
 
     Notes:
-        Adding an operation to 0-dimensional np.ndarray may result in np.float64
+        Adding an operation to 0-dimensional np.ndarray may result in np.float64.
+        So if you assume np.ndarray type, you should apply this function in advance.
         ```
         >>> x = np.array(1.0)
         >>> y = x ** 2
@@ -57,10 +58,16 @@ class Variable:
         funcs = [self.creator]
         while funcs:
             f = funcs.pop()
-            x, y = f.input, f.output
-            x.grad = f.backward(y.grad)
-            if x.creator is not None:
-                funcs.append(x.creator)
+            gys = [output.grad for output in f.outputs]
+            gxs = f.backward(*gys)
+            if not isinstance(gxs, tuple):
+                gxs = (gxs,)
+
+            for x, gx in zip(f.inputs, gxs):
+                x.grad = gx
+
+                if x.creator is not None:
+                    funcs.append(x.creator)
 
 
 class Function(metaclass=ABCMeta):
@@ -68,38 +75,40 @@ class Function(metaclass=ABCMeta):
     `__call__` applies the operation defined by `forward` to input x (Variable)
 
     Attributes:
-        input (Variable): input during forward propagation
+        inputs (Tuple[Variable]): inputs of forward propagation
+        outputs (List[Variable]): outputs of forward propagation
     """
 
-    def __call__(self, input: Variable) -> Variable:
-        x = input.data
-        y = self.forward(x)
-        output = Variable(as_array(y))
-        output.set_creator(self)
-        self.input = input
-        self.output = output
-        return output
+    def __call__(self, *inputs: Variable) -> Union[Variable, List[Variable]]:
+        xs = [x.data for x in inputs]
+        ys = self.forward(*xs)
+        if not isinstance(ys, tuple):
+            ys = (ys,)
+        outputs = [Variable(as_array(y)) for y in ys]
+
+        for output in outputs:
+            output.set_creator(self)
+        self.inputs = inputs
+        self.outputs = outputs
+        return outputs if len(outputs) > 1 else outputs[0]
 
     @abstractmethod
-    def forward(self, x: np.ndarray) -> np.ndarray:
+    def forward(self, *xs: np.ndarray) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
         pass
 
     @abstractmethod
-    def backward(self, gy: np.ndarray) -> np.ndarray:
+    def backward(self, gy: np.ndarray) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
         pass
-
-    def check_type(self):
-        raise
 
 
 class Square(Function):
     """Forward and backward propagation of square operation."""
 
-    def forward(self, x: np.ndarray) -> np.ndarray:
-        return x**2
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        return xs[0] ** 2
 
     def backward(self, gy: np.ndarray) -> np.ndarray:
-        x = self.input.data
+        x = self.inputs[0].data
         gx = 2 * x * gy
         return gx
 
@@ -107,13 +116,25 @@ class Square(Function):
 class Exp(Function):
     """Forward and backward propagation of expornential operation."""
 
-    def forward(self, x: np.ndarray) -> np.ndarray:
-        return np.exp(x)
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        return np.exp(xs[0])
 
     def backward(self, gy: np.ndarray) -> np.ndarray:
-        x = self.input.data
+        x = self.inputs[0].data
         gx = np.exp(x) * gy
         return gx
+
+
+class Add(Function):
+    """Forward and backward propagation of add operation."""
+
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        x0, x1 = xs
+        y = x0 + x1
+        return y
+
+    def backward(self, gy: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        return gy, gy
 
 
 def square(x: Variable) -> Variable:
@@ -125,8 +146,9 @@ def square(x: Variable) -> Variable:
     Returns:
         Variable: output variable (x^2)
     """
-    f = Square()
-    return f(x)
+    y = Square()(x)
+    assert isinstance(y, Variable)
+    return y
 
 
 def exp(x: Variable) -> Variable:
@@ -138,10 +160,30 @@ def exp(x: Variable) -> Variable:
     Returns:
         Variable: output variable (exp(x))
     """
-    f = Exp()
-    return f(x)
+    y = Exp()(x)
+    assert isinstance(y, Variable)
+    return y
 
 
-x = Variable(np.array(0.5))
-# x = Variable(None)
-# x = Variable(0.5)
+def add(x1: Variable, x2: Variable) -> Variable:
+    """Perform a add operation.
+
+    Args:
+        x1 (Variable): input variable (left)
+        x2 (Variable): input variable (right)
+
+    Returns:
+        Variable: output variable (x1 + x2)
+    """
+    y = Add()(x1, x2)
+    assert isinstance(y, Variable)
+    return y
+
+
+x = Variable(np.array(2.0))
+y = Variable(np.array(3.0))
+z = add(square(x), square(y))
+z.backward()
+print(z.data)
+print(x.grad)
+print(y.grad)
