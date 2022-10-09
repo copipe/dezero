@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import contextlib
-import numbers
 import weakref
 from abc import ABCMeta, abstractmethod
-from typing import Any, List, Optional, Tuple, Union
+from numbers import Number
+from typing import Any, List, Tuple
 
 import numpy as np
 
 
 class Config:
-    enable_backprop = True
+    enable_backprop: bool = True
 
 
 @contextlib.contextmanager
@@ -35,11 +35,11 @@ def no_grad():
     return using_config("enable_backprop", False)
 
 
-def as_array(x: Union[np.ndarray, numbers.Number]) -> np.ndarray:
-    """Convert numbers.Number to np.ndarray.
+def as_array(x: np.ndarray | Number | float | int) -> np.ndarray:
+    """Convert number to np.ndarray.
 
     Args:
-        x (Union[np.ndarray, numbers.Number]): input tensor(np.ndarray) or number(np.float32, np.float64 etc...).
+        x (np.ndarray | Number | float | int): input tensor(np.ndarray) or number(np.float32, float, int etc...).
 
     Returns:
         np.ndarray: ndarray Tensor
@@ -54,25 +54,23 @@ def as_array(x: Union[np.ndarray, numbers.Number]) -> np.ndarray:
         <class 'numpy.ndarray'> <class 'numpy.float64'>
         ```
     """
-    if isinstance(x, numbers.Number):
+    if np.isscalar(x):
         return np.array(x)
     return x
 
 
-def as_variable(obj: Union[Variable, np.ndarray, numbers.Number]) -> Variable:
+def as_variable(obj: Variable | np.ndarray) -> Variable:
     """Convert np.ndarray to Variable
 
     Args:
-        obj (Union[Variable, np.ndarray, numbers.Number]): Tensor to change Variable
+        obj (Variable | np.ndarray): Tensor to change Variable
 
     Returns:
         Variable: Variable Tensor
     """
     if isinstance(obj, Variable):
         return obj
-    if isinstance(obj, np.ndarray):
-        return Variable(obj)
-    return Variable(as_array(obj))
+    return Variable(obj)
 
 
 class Variable:
@@ -80,37 +78,37 @@ class Variable:
 
     Attributes:
         data (np.ndarray) : parameter tensor.
-        name (Optional[str]) : name of this variable.
-        grad (float): gradient computed by backpropagation.
-        creator (Function): The function that created this variable.
+        name (str | None) : name of this variable.
+        grad (float | None): gradient computed by backpropagation.
+        creator (Function | None): The function that created this variable.
         generation (int): Generation timing during forward propagation
                           (which serves as a guideline for the processing order during backward propagation)
     """
 
     __array_priority__ = 200  # Prefer Variable operators over numpy operators. (ex: np.array([1.0]) + variable(np.array([1.0])))
 
-    def __init__(self, data: np.ndarray, name: Optional[str] = None):
+    def __init__(self, data: np.ndarray, name: str | None = None):
         if not isinstance(data, np.ndarray):
             raise TypeError(f"{type(data)} is not supported.")
 
         self.data = data
         self.name = name
-        self.grad: Optional[Variable] = None
-        self.creator: Optional[Function] = None
+        self.grad: Variable | None = None
+        self.creator: Function | None = None
         self.generation: int = 0
 
     def set_creator(self, func: Function):
-        self.creator = func
-        self.generation = func.generation + 1
+        self.creator: Function = func
+        self.generation: int = func.generation + 1
 
-    def backward(self, retain_grad=False, create_graph=False):
+    def backward(self, retain_grad: bool = False, create_graph: bool = False):
         if self.grad is None:
             self.grad = Variable(np.ones_like(self.data))
 
-        funcs = []
+        funcs: List[Function] = []
         seen_set = set()
 
-        def add_func(f):
+        def add_func(f: Function) -> None:
             if f not in seen_set:
                 funcs.append(f)
                 seen_set.add(f)
@@ -166,42 +164,42 @@ class Variable:
     def dtype(self):
         return self.data.dtype
 
-    def __add__(self, other: Union[Variable, np.ndarray, numbers.Number]):
-        other = as_variable(other)
+    def __add__(self, other: Variable | np.ndarray | float | int) -> Variable:
+        other = as_variable(as_array(other))
         return add(self, other)
 
-    def __mul__(self, other: Union[Variable, np.ndarray, numbers.Number]):
-        other = as_variable(other)
+    def __mul__(self, other: Variable | np.ndarray | float | int) -> Variable:
+        other = as_variable(as_array(other))
         return mul(self, other)
 
-    def __radd__(self, other: Union[Variable, np.ndarray, numbers.Number]):
-        other = as_variable(other)
-        return add(self, other)
+    def __radd__(self, other: Variable | np.ndarray | float | int) -> Variable:
+        other = as_variable(as_array(other))
+        return add(other, self)
 
-    def __rmul__(self, other: Union[Variable, np.ndarray, numbers.Number]):
-        other = as_variable(other)
-        return mul(self, other)
+    def __rmul__(self, other: Variable | np.ndarray | float | int) -> Variable:
+        other = as_variable(as_array(other))
+        return mul(other, self)
 
-    def __neg__(self):
+    def __neg__(self) -> Variable:
         return neg(self)
 
-    def __sub__(self, other: Union[Variable, np.ndarray, numbers.Number]):
-        other = as_variable(other)
+    def __sub__(self, other: Variable | np.ndarray | float | int) -> Variable:
+        other = as_variable(as_array(other))
         return sub(self, other)
 
-    def __rsub__(self, other: Union[Variable, np.ndarray, numbers.Number]):
-        other = as_variable(other)
+    def __rsub__(self, other: Variable | np.ndarray | float | int) -> Variable:
+        other = as_variable(as_array(other))
         return sub(other, self)
 
-    def __truediv__(self, other: Union[Variable, np.ndarray, numbers.Number]):
-        other = as_variable(other)
+    def __truediv__(self, other: Variable | np.ndarray | float | int) -> Variable:
+        other = as_variable(as_array(other))
         return div(self, other)
 
-    def __rtruediv__(self, other: Union[Variable, np.ndarray, numbers.Number]):
-        other = as_variable(other)
+    def __rtruediv__(self, other: Variable | np.ndarray | float | int) -> Variable:
+        other = as_variable(as_array(other))
         return div(other, self)
 
-    def __pow__(self, c: int):
+    def __pow__(self, c: int | float) -> Variable:
         return pow(self, c)
 
 
@@ -216,12 +214,12 @@ class Function(metaclass=ABCMeta):
                           (which serves as a guideline for the processing order during backward propagation)
     """
 
-    def __call__(self, *inputs: Variable) -> Union[Variable, List[Variable]]:
+    def __call__(self, *inputs: Variable) -> Variable | List[Variable]:
         xs = [x.data for x in inputs]
         ys = self.forward(*xs)
         if not isinstance(ys, tuple):
             ys = (ys,)
-        outputs = [Variable(as_array(y)) for y in ys]
+        outputs = [Variable(y) for y in ys]
 
         if Config.enable_backprop:
             self.generation = max([x.generation for x in inputs])
@@ -232,11 +230,11 @@ class Function(metaclass=ABCMeta):
         return outputs if len(outputs) > 1 else outputs[0]
 
     @abstractmethod
-    def forward(self, *xs: np.ndarray) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
+    def forward(self, *xs: np.ndarray) -> np.ndarray | Tuple[np.ndarray, ...]:
         pass
 
     @abstractmethod
-    def backward(self, gy: Variable) -> Union[Variable, Tuple[Variable, ...]]:
+    def backward(self, gy: Variable) -> Variable | Tuple[Variable, ...]:
         pass
 
 
@@ -246,7 +244,7 @@ class Add(Function):
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
         y = x0 + x1
-        return y
+        return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
         return gy, gy
@@ -258,7 +256,7 @@ class Mul(Function):
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
         y = x0 * x1
-        return y
+        return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
         x0, x1 = self.inputs
@@ -269,7 +267,8 @@ class Neg(Function):
     """Forward and backward propagation of negative operation."""
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
-        return -xs[0]
+        y = -xs[0]
+        return as_array(y)
 
     def backward(self, gy: Variable) -> Variable:
         return -gy
@@ -281,7 +280,7 @@ class Sub(Function):
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
         y = x0 - x1
-        return y
+        return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
         return gy, -gy
@@ -293,7 +292,7 @@ class Div(Function):
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
         y = x0 / x1
-        return y
+        return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
         x0, x1 = self.inputs
@@ -305,16 +304,16 @@ class Div(Function):
 class Pow(Function):
     """Forward and backward propagation of power operation."""
 
-    def __init__(self, c: int):
+    def __init__(self, c: int | float):
         self.c = c
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
-        return xs[0] ** self.c
+        y = xs[0] ** self.c
+        return as_array(y)
 
     def backward(self, gy: Variable) -> Variable:
         (x,) = self.inputs
-        c = self.c
-        gx = c * x ** (c - 1) * gy
+        gx = self.c * x ** (self.c - 1) * gy
         return gx
 
 
