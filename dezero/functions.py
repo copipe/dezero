@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from typing import Tuple
+
 import numpy as np
 
-from dezero.core import Function, Variable, as_array
+from dezero.core import Function, Variable, as_array, as_variable
 
 
 class Square(Function):
@@ -68,6 +70,27 @@ class Tanh(Function):
         return gx
 
 
+class Reshape(Function):
+    """Forward and backward propagation of reshape function.
+
+    Attributes:
+            shape (Tuple): shape of the tensor after reshaping
+            x_shape (Tuple): shape of the tensor before reshaping
+    """
+
+    def __init__(self, shape: Tuple):
+        self.shape = shape
+
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        x = xs[0]
+        self.x_shape = x.shape
+        y = x.reshape(self.shape)
+        return as_array(y)
+
+    def backward(self, gy: Variable) -> Variable:
+        return reshape(gy, self.x_shape)
+
+
 def square(x: Variable) -> Variable:
     """Perform a square operation.
 
@@ -130,3 +153,18 @@ def tanh(x: Variable) -> Variable:
         Variable: output variable (tanh(x))
     """
     return Tanh()(x)
+
+
+def reshape(x: Variable, shape: Tuple) -> Variable:
+    """Perform a reshape function
+
+    Args:
+        x (Variable): input variable
+        shape (Tuple): tensor of shape after reshaping
+
+    Returns:
+        Variable: output variable (x.reshape(shape))
+    """
+    if x.shape == shape:
+        return as_variable(x)
+    return Reshape(shape)(x)
