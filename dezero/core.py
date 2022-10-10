@@ -202,6 +202,15 @@ class Variable:
     def __pow__(self, c: int | float) -> Variable:
         return pow(self, c)
 
+    def reshape(self, *shape: Tuple):
+        if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
+            shape = shape[0]
+        return reshape(self, shape)
+
+    @property
+    def T(self):
+        return transpose(self)
+
 
 class Function(metaclass=ABCMeta):
     """Base class to create custom Function
@@ -317,6 +326,39 @@ class Pow(Function):
         return gx
 
 
+class Reshape(Function):
+    """Forward and backward propagation of reshape function.
+
+    Attributes:
+            shape (Tuple): shape of the tensor after reshaping
+            x_shape (Tuple): shape of the tensor before reshaping
+    """
+
+    def __init__(self, shape: Tuple):
+        self.shape = shape
+
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        x = xs[0]
+        self.x_shape = x.shape
+        y = x.reshape(self.shape)
+        return as_array(y)
+
+    def backward(self, gy: Variable) -> Variable:
+        return reshape(gy, self.x_shape)
+
+
+class Transpose(Function):
+    """Forward and backward propagation of transpose function."""
+
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        y = np.transpose(xs[0])
+        return as_array(y)
+
+    def backward(self, gy: Variable) -> Variable:
+        gx = transpose(gy)
+        return gx
+
+
 def add(x0: Variable, x1: Variable) -> Variable:
     """Perform a add operation.
 
@@ -404,3 +446,30 @@ def pow(x: Variable, c: int) -> Variable:
     y = Pow(c)(x)
     assert isinstance(y, Variable)
     return y
+
+
+def reshape(x: Variable, shape: Tuple) -> Variable:
+    """Perform a reshape function
+
+    Args:
+        x (Variable): input variable
+        shape (Tuple): tensor of shape after reshaping
+
+    Returns:
+        Variable: output variable (x.reshape(shape))
+    """
+    if x.shape == shape:
+        return as_variable(x)
+    return Reshape(shape)(x)
+
+
+def transpose(x: Variable) -> Variable:
+    """Perform a transpose function
+
+    Args:
+        x (Variable): input variable
+
+    Returns:
+        Variable: output variable (x.T)
+    """
+    return Transpose()(x)
