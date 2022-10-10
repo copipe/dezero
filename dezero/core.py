@@ -8,6 +8,8 @@ from typing import Any, List, Tuple
 
 import numpy as np
 
+import dezero
+
 
 class Config:
     enable_backprop: bool = True
@@ -202,7 +204,7 @@ class Variable:
     def __pow__(self, c: int | float) -> Variable:
         return pow(self, c)
 
-    def reshape(self, *shape: Tuple):
+    def reshape(self, *shape: Tuple | List):
         if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
             shape = shape[0]
         return reshape(self, shape)
@@ -210,6 +212,9 @@ class Variable:
     @property
     def T(self):
         return transpose(self)
+
+    def sum(self, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False):
+        return sum(self, axis, keepdims)
 
 
 class Function(metaclass=ABCMeta):
@@ -252,11 +257,16 @@ class Add(Function):
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 + x1
         return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
-        return gy, gy
+        gx0, gx1 = gy, gy
+        if self.x0_shape != self.x1_shape:
+            gx0 = sum_to(gx0, self.x0_shape)
+            gx1 = sum_to(gx1, self.x1_shape)
+        return gx0, gx1
 
 
 class Mul(Function):
@@ -264,12 +274,17 @@ class Mul(Function):
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 * x1
         return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
         x0, x1 = self.inputs
-        return gy * x1, gy * x0
+        gx0, gx1 = gy * x1, gy * x0
+        if self.x0_shape != self.x1_shape:
+            gx0 = sum_to(gx0, self.x0_shape)
+            gx1 = sum_to(gx1, self.x1_shape)
+        return gx0, gx1
 
 
 class Neg(Function):
@@ -288,11 +303,16 @@ class Sub(Function):
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 - x1
         return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
-        return gy, -gy
+        gx0, gx1 = gy, -gy
+        if self.x0_shape != self.x1_shape:
+            gx0 = sum_to(gx0, self.x0_shape)
+            gx1 = sum_to(gx1, self.x1_shape)
+        return gx0, gx1
 
 
 class Div(Function):
@@ -300,6 +320,7 @@ class Div(Function):
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 / x1
         return as_array(y)
 
@@ -307,6 +328,9 @@ class Div(Function):
         x0, x1 = self.inputs
         gx0 = gy / x1
         gx1 = gy * (-x0 / x1**2)
+        if self.x0_shape != self.x1_shape:
+            gx0 = sum_to(gx0, self.x0_shape)
+            gx1 = sum_to(gx1, self.x1_shape)
         return gx0, gx1
 
 
@@ -334,7 +358,7 @@ class Reshape(Function):
             x_shape (Tuple): shape of the tensor before reshaping
     """
 
-    def __init__(self, shape: Tuple):
+    def __init__(self, shape: Tuple | List):
         self.shape = shape
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
@@ -357,6 +381,72 @@ class Transpose(Function):
     def backward(self, gy: Variable) -> Variable:
         gx = transpose(gy)
         return gx
+
+
+class Sum(Function):
+    """Forward and backward propagation of sum operation."""
+
+    def __init__(
+        self, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False
+    ):
+        self.axis = axis
+        self.keepdims = keepdims
+        self.x_shape = None
+
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        x = xs[0]
+        self.x_shape = x.shape
+        y = x.sum(axis=self.axis, keepdims=self.keepdims)
+        return as_array(y)
+
+    def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
+        gx = dezero.utils.reshape_sum_backward(
+            gy, self.x_shape, self.axis, self.keepdims
+        )
+        gx = broadcast_to(gy, self.x_shape)
+        return gx
+
+
+class BroadcastTo(Function):
+    def __init__(self, shape):
+        self.shape = shape
+
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        x = xs[0]
+        self.x_shape = x.shape
+        y = np.broadcast_to(x, self.shape)
+        return as_array(y)
+
+    def backward(self, gy: Variable) -> Variable:
+        gx = dezero.utils.sum_to(gy, self.x_shape)
+        return gx
+
+
+def broadcast_to(x, shape):
+    if x.shape == shape:
+        return as_variable(x)
+    return BroadcastTo(shape)(x)
+
+
+class SumTo(Function):
+    def __init__(self, shape):
+        self.shape = shape
+
+    def forward(self, *xs: np.ndarray) -> np.ndarray:
+        x = xs[0]
+        self.x_shape = x.shape
+        y = dezero.utils.sum_to(x, self.shape)
+        return as_array(y)
+
+    def backward(self, gy: Variable) -> Variable:
+        gx = broadcast_to(gy, self.x_shape)
+        return gx
+
+
+def sum_to(x, shape):
+    if x.shape == shape:
+        return as_variable(x)
+    return SumTo(shape)(x)
 
 
 def add(x0: Variable, x1: Variable) -> Variable:
@@ -473,3 +563,19 @@ def transpose(x: Variable) -> Variable:
         Variable: output variable (x.T)
     """
     return Transpose()(x)
+
+
+def sum(
+    x: Variable, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False
+) -> Variable:
+    """
+
+    Args:
+        x (Variable): input variable
+        axis (Tuple[int, ...] | int | None, optional): Axis or axes along which a sum is performed.
+        keepdims (bool, optional):If this is set to True, the axes which are reduced are left in the result as dimensions with size one. Defaults to False.
+
+    Returns:
+        Variable: output variable (sum(x))
+    """
+    return Sum(axis, keepdims)(x)
