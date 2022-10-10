@@ -9,7 +9,7 @@ class Sin(Function):
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         return np.sin(xs[0])
 
-    def backward(self, gy: np.ndarray) -> np.ndarray:
+    def backward(self, gy: Variable) -> Variable:
         x = self.inputs[0].data
         gx = gy * np.cos(x)
         return gx
