@@ -430,7 +430,7 @@ class Sigmoid(Function):
         return gx
 
 
-def sigmoid(x: Variable):
+def sigmoid(x: Variable) -> Variable:
     """Perform a sigmoid function
 
     Args:
