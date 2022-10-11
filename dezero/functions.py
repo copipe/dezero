@@ -5,6 +5,7 @@ from typing import List, Tuple
 import numpy as np
 
 import dezero
+import dezero.utils as utils
 from dezero.core import Function, Variable, as_array, as_variable
 
 
@@ -218,11 +219,25 @@ class Sum(Function):
         return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
-        gx = dezero.utils.reshape_sum_backward(
-            gy, self.x_shape, self.axis, self.keepdims
-        )
+        gx = utils.reshape_sum_backward(gy, self.x_shape, self.axis, self.keepdims)
         gx = broadcast_to(gy, self.x_shape)
         return gx
+
+
+def sum(
+    x: Variable, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False
+) -> Variable:
+    """
+
+    Args:
+        x (Variable): input variable
+        axis (Tuple[int, ...] | int | None, optional): Axis or axes along which a sum is performed.
+        keepdims (bool, optional):If this is set to True, the axes which are reduced are left in the result as dimensions with size one. Defaults to False.
+
+    Returns:
+        Variable: output variable (sum(x))
+    """
+    return dezero.functions.Sum(axis, keepdims)(x)
 
 
 class BroadcastTo(Function):
