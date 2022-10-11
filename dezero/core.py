@@ -384,7 +384,13 @@ class Transpose(Function):
 
 
 class Sum(Function):
-    """Forward and backward propagation of sum operation."""
+    """Forward and backward propagation of sum operation.
+
+    Attributes:
+        axis (Tuple[int, ...] | int | None, optional): Axis or axes along which a sum is performed.
+        keepdims (bool, optional):If this is set to True, the axes which are reduced are left in the result as dimensions with size one. Defaults to False.
+        x_shape (Tuple): shape of the tensor before reshaping
+    """
 
     def __init__(
         self, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False
@@ -408,7 +414,14 @@ class Sum(Function):
 
 
 class BroadcastTo(Function):
-    def __init__(self, shape):
+    """Forward and backward propagation of broadcast operation.
+
+    Attributes:
+        x_shape (Tuple): shape of the tensor before reshaping
+        shape (Tuple): shape of the tensor after reshaping
+    """
+
+    def __init__(self, shape: Tuple[int, ...]):
         self.shape = shape
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
@@ -422,14 +435,16 @@ class BroadcastTo(Function):
         return gx
 
 
-def broadcast_to(x, shape):
-    if x.shape == shape:
-        return as_variable(x)
-    return BroadcastTo(shape)(x)
-
-
 class SumTo(Function):
-    def __init__(self, shape):
+    """Forward and backward propagation of sumto operation.
+    This operation is opposite operation of broadcast.
+
+    Attributes:
+        x_shape (Tuple): shape of the tensor before reshaping
+        shape (Tuple): shape of the tensor after reshaping
+    """
+
+    def __init__(self, shape: Tuple[int, ...]):
         self.shape = shape
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
@@ -441,12 +456,6 @@ class SumTo(Function):
     def backward(self, gy: Variable) -> Variable:
         gx = broadcast_to(gy, self.x_shape)
         return gx
-
-
-def sum_to(x, shape):
-    if x.shape == shape:
-        return as_variable(x)
-    return SumTo(shape)(x)
 
 
 def add(x0: Variable, x1: Variable) -> Variable:
@@ -579,3 +588,34 @@ def sum(
         Variable: output variable (sum(x))
     """
     return Sum(axis, keepdims)(x)
+
+
+def broadcast_to(x: Variable, shape: Tuple[int, ...]):
+    """Perform a broadcast operation.
+
+    Args:
+        x (Variable): input variable
+        shape (Tuple): shape of the tensor after broadcasting
+
+    Returns:
+        Variable: output variable after broadcasting
+    """
+    if x.shape == shape:
+        return as_variable(x)
+    return BroadcastTo(shape)(x)
+
+
+def sum_to(x: Variable, shape: Tuple[int, ...]):
+    """Perform a sumto operation.
+    This operation is opposite operation of broadcast.
+
+    Args:
+        x (Variable): input variable
+        shape (Tuple): shape of the tensor after sumto
+
+    Returns:
+        Variable: output variable after sumto
+    """
+    if x.shape == shape:
+        return as_variable(x)
+    return SumTo(shape)(x)

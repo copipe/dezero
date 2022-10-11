@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import os
 import subprocess
-from typing import Tuple, Union
+from typing import Tuple
 
 import numpy as np
 
@@ -126,7 +128,7 @@ def sum_to(x: np.ndarray, shape: Tuple):
 def reshape_sum_backward(
     gy: Variable,
     x_shape: Tuple,
-    axis: Union[int, Tuple[int, ...], None],
+    axis: int | Tuple[int, ...] | None,
     keepdims: bool,
 ) -> Variable:
     """Reshape gradient appropriately for dezero.functions.sum's backward.
