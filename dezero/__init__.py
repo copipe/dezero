@@ -1,4 +1,3 @@
-from dezero import utils
 from dezero.core import Function, Variable, as_array, as_variable, no_grad, using_config
 
 __all__ = [

@@ -207,11 +207,11 @@ class Variable:
     def reshape(self, *shape: Tuple | List):
         if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
             shape = shape[0]
-        return reshape(self, shape)
+        return dezero.functions.reshape(self, shape)
 
     @property
     def T(self):
-        return transpose(self)
+        return dezero.functions.transpose(self)
 
     def sum(self, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False):
         return sum(self, axis, keepdims)
@@ -264,8 +264,8 @@ class Add(Function):
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
         gx0, gx1 = gy, gy
         if self.x0_shape != self.x1_shape:
-            gx0 = sum_to(gx0, self.x0_shape)
-            gx1 = sum_to(gx1, self.x1_shape)
+            gx0 = dezero.functions.sum_to(gx0, self.x0_shape)
+            gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
         return gx0, gx1
 
 
@@ -282,8 +282,8 @@ class Mul(Function):
         x0, x1 = self.inputs
         gx0, gx1 = gy * x1, gy * x0
         if self.x0_shape != self.x1_shape:
-            gx0 = sum_to(gx0, self.x0_shape)
-            gx1 = sum_to(gx1, self.x1_shape)
+            gx0 = dezero.functions.sum_to(gx0, self.x0_shape)
+            gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
         return gx0, gx1
 
 
@@ -310,8 +310,8 @@ class Sub(Function):
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
         gx0, gx1 = gy, -gy
         if self.x0_shape != self.x1_shape:
-            gx0 = sum_to(gx0, self.x0_shape)
-            gx1 = sum_to(gx1, self.x1_shape)
+            gx0 = dezero.functions.sum_to(gx0, self.x0_shape)
+            gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
         return gx0, gx1
 
 
@@ -329,8 +329,8 @@ class Div(Function):
         gx0 = gy / x1
         gx1 = gy * (-x0 / x1**2)
         if self.x0_shape != self.x1_shape:
-            gx0 = sum_to(gx0, self.x0_shape)
-            gx1 = sum_to(gx1, self.x1_shape)
+            gx0 = dezero.functions.sum_to(gx0, self.x0_shape)
+            gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
         return gx0, gx1
 
 
@@ -347,114 +347,6 @@ class Pow(Function):
     def backward(self, gy: Variable) -> Variable:
         (x,) = self.inputs
         gx = self.c * x ** (self.c - 1) * gy
-        return gx
-
-
-class Reshape(Function):
-    """Forward and backward propagation of reshape function.
-
-    Attributes:
-            shape (Tuple): shape of the tensor after reshaping
-            x_shape (Tuple): shape of the tensor before reshaping
-    """
-
-    def __init__(self, shape: Tuple | List):
-        self.shape = shape
-
-    def forward(self, *xs: np.ndarray) -> np.ndarray:
-        x = xs[0]
-        self.x_shape = x.shape
-        y = x.reshape(self.shape)
-        return as_array(y)
-
-    def backward(self, gy: Variable) -> Variable:
-        return reshape(gy, self.x_shape)
-
-
-class Transpose(Function):
-    """Forward and backward propagation of transpose function."""
-
-    def forward(self, *xs: np.ndarray) -> np.ndarray:
-        y = np.transpose(xs[0])
-        return as_array(y)
-
-    def backward(self, gy: Variable) -> Variable:
-        gx = transpose(gy)
-        return gx
-
-
-class Sum(Function):
-    """Forward and backward propagation of sum operation.
-
-    Attributes:
-        axis (Tuple[int, ...] | int | None, optional): Axis or axes along which a sum is performed.
-        keepdims (bool, optional):If this is set to True, the axes which are reduced are left in the result as dimensions with size one. Defaults to False.
-        x_shape (Tuple): shape of the tensor before reshaping
-    """
-
-    def __init__(
-        self, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False
-    ):
-        self.axis = axis
-        self.keepdims = keepdims
-        self.x_shape = None
-
-    def forward(self, *xs: np.ndarray) -> np.ndarray:
-        x = xs[0]
-        self.x_shape = x.shape
-        y = x.sum(axis=self.axis, keepdims=self.keepdims)
-        return as_array(y)
-
-    def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
-        gx = dezero.utils.reshape_sum_backward(
-            gy, self.x_shape, self.axis, self.keepdims
-        )
-        gx = broadcast_to(gy, self.x_shape)
-        return gx
-
-
-class BroadcastTo(Function):
-    """Forward and backward propagation of broadcast operation.
-
-    Attributes:
-        x_shape (Tuple): shape of the tensor before reshaping
-        shape (Tuple): shape of the tensor after reshaping
-    """
-
-    def __init__(self, shape: Tuple[int, ...]):
-        self.shape = shape
-
-    def forward(self, *xs: np.ndarray) -> np.ndarray:
-        x = xs[0]
-        self.x_shape = x.shape
-        y = np.broadcast_to(x, self.shape)
-        return as_array(y)
-
-    def backward(self, gy: Variable) -> Variable:
-        gx = dezero.utils.sum_to(gy, self.x_shape)
-        return gx
-
-
-class SumTo(Function):
-    """Forward and backward propagation of sumto operation.
-    This operation is opposite operation of broadcast.
-
-    Attributes:
-        x_shape (Tuple): shape of the tensor before reshaping
-        shape (Tuple): shape of the tensor after reshaping
-    """
-
-    def __init__(self, shape: Tuple[int, ...]):
-        self.shape = shape
-
-    def forward(self, *xs: np.ndarray) -> np.ndarray:
-        x = xs[0]
-        self.x_shape = x.shape
-        y = dezero.utils.sum_to(x, self.shape)
-        return as_array(y)
-
-    def backward(self, gy: Variable) -> Variable:
-        gx = broadcast_to(gy, self.x_shape)
         return gx
 
 
@@ -547,33 +439,6 @@ def pow(x: Variable, c: int) -> Variable:
     return y
 
 
-def reshape(x: Variable, shape: Tuple) -> Variable:
-    """Perform a reshape function
-
-    Args:
-        x (Variable): input variable
-        shape (Tuple): tensor of shape after reshaping
-
-    Returns:
-        Variable: output variable (x.reshape(shape))
-    """
-    if x.shape == shape:
-        return as_variable(x)
-    return Reshape(shape)(x)
-
-
-def transpose(x: Variable) -> Variable:
-    """Perform a transpose function
-
-    Args:
-        x (Variable): input variable
-
-    Returns:
-        Variable: output variable (x.T)
-    """
-    return Transpose()(x)
-
-
 def sum(
     x: Variable, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False
 ) -> Variable:
@@ -587,35 +452,4 @@ def sum(
     Returns:
         Variable: output variable (sum(x))
     """
-    return Sum(axis, keepdims)(x)
-
-
-def broadcast_to(x: Variable, shape: Tuple[int, ...]):
-    """Perform a broadcast operation.
-
-    Args:
-        x (Variable): input variable
-        shape (Tuple): shape of the tensor after broadcasting
-
-    Returns:
-        Variable: output variable after broadcasting
-    """
-    if x.shape == shape:
-        return as_variable(x)
-    return BroadcastTo(shape)(x)
-
-
-def sum_to(x: Variable, shape: Tuple[int, ...]):
-    """Perform a sumto operation.
-    This operation is opposite operation of broadcast.
-
-    Args:
-        x (Variable): input variable
-        shape (Tuple): shape of the tensor after sumto
-
-    Returns:
-        Variable: output variable after sumto
-    """
-    if x.shape == shape:
-        return as_variable(x)
-    return SumTo(shape)(x)
+    return dezero.functions.Sum(axis, keepdims)(x)
