@@ -439,17 +439,5 @@ def pow(x: Variable, c: int) -> Variable:
     return y
 
 
-def sum(
-    x: Variable, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False
-) -> Variable:
-    """
-
-    Args:
-        x (Variable): input variable
-        axis (Tuple[int, ...] | int | None, optional): Axis or axes along which a sum is performed.
-        keepdims (bool, optional):If this is set to True, the axes which are reduced are left in the result as dimensions with size one. Defaults to False.
-
-    Returns:
-        Variable: output variable (sum(x))
-    """
-    return dezero.functions.Sum(axis, keepdims)(x)
+class Parameter(Variable):
+    pass
