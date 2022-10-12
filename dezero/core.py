@@ -8,6 +8,8 @@ from typing import Any, List, Tuple
 
 import numpy as np
 
+import dezero
+
 
 class Config:
     enable_backprop: bool = True
@@ -202,6 +204,18 @@ class Variable:
     def __pow__(self, c: int | float) -> Variable:
         return pow(self, c)
 
+    def reshape(self, *shape: Tuple | List):
+        if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
+            shape = shape[0]
+        return dezero.functions.reshape(self, shape)
+
+    @property
+    def T(self):
+        return dezero.functions.transpose(self)
+
+    def sum(self, axis: Tuple[int, ...] | int | None = None, keepdims: bool = False):
+        return sum(self, axis, keepdims)
+
 
 class Function(metaclass=ABCMeta):
     """Base class to create custom Function
@@ -243,11 +257,16 @@ class Add(Function):
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 + x1
         return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
-        return gy, gy
+        gx0, gx1 = gy, gy
+        if self.x0_shape != self.x1_shape:
+            gx0 = dezero.functions.sum_to(gx0, self.x0_shape)
+            gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
+        return gx0, gx1
 
 
 class Mul(Function):
@@ -255,12 +274,17 @@ class Mul(Function):
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 * x1
         return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
         x0, x1 = self.inputs
-        return gy * x1, gy * x0
+        gx0, gx1 = gy * x1, gy * x0
+        if self.x0_shape != self.x1_shape:
+            gx0 = dezero.functions.sum_to(gx0, self.x0_shape)
+            gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
+        return gx0, gx1
 
 
 class Neg(Function):
@@ -279,11 +303,16 @@ class Sub(Function):
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 - x1
         return as_array(y)
 
     def backward(self, gy: Variable) -> Tuple[Variable, Variable]:
-        return gy, -gy
+        gx0, gx1 = gy, -gy
+        if self.x0_shape != self.x1_shape:
+            gx0 = dezero.functions.sum_to(gx0, self.x0_shape)
+            gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
+        return gx0, gx1
 
 
 class Div(Function):
@@ -291,6 +320,7 @@ class Div(Function):
 
     def forward(self, *xs: np.ndarray) -> np.ndarray:
         x0, x1 = xs
+        self.x0_shape, self.x1_shape = x0.shape, x1.shape
         y = x0 / x1
         return as_array(y)
 
@@ -298,6 +328,9 @@ class Div(Function):
         x0, x1 = self.inputs
         gx0 = gy / x1
         gx1 = gy * (-x0 / x1**2)
+        if self.x0_shape != self.x1_shape:
+            gx0 = dezero.functions.sum_to(gx0, self.x0_shape)
+            gx1 = dezero.functions.sum_to(gx1, self.x1_shape)
         return gx0, gx1
 
 
@@ -404,3 +437,7 @@ def pow(x: Variable, c: int) -> Variable:
     y = Pow(c)(x)
     assert isinstance(y, Variable)
     return y
+
+
+class Parameter(Variable):
+    pass

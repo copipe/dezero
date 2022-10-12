@@ -7,10 +7,28 @@ DeZero is a python package that provides a deep learing framework.
 This package has minimal code and features similar to modern frameworks like PyTorch and TensorFlow.  
 This code is based on ["Deep Learning 3 made from scratch"](https://www.oreilly.co.jp/books/9784873119069/), and you can refer to the original source code from [here](https://github.com/oreilly-japan/deep-learning-from-scratch-3).
 
-## Installation
-You will be able to install DeZero via pip. (not yet supported)
+## Setup
+
+First, launch an ubuntu container using docker.
 ```
-$ pip install dezero
+$ cd environments/cpu/
+$ docker-compose up -d
+```
+
+Once the container has started, connect to it.
+```
+$ docker exec -it dezero_cpu /bin/bash
+```
+
+Next, create a virtual environment for python3.9 with poetry.
+```
+$ poetry install
+```
+
+Setup is complete by activating the virtual environment with the following command.
+
+```
+$ poetry shell
 ```
 
 ## Examples
