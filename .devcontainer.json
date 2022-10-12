@@ -36,5 +36,6 @@
         "njpwerner.autodocstring",
         "shardulm94.trailing-spaces",
         "vscodevim.vim",
+        "shd101wyy.markdown-preview-enhanced",
     ]
 }
